@@ -6,6 +6,9 @@
 
 #include "tema1.h"
 
+// Create a list to store the requests
+list<pair<string, pair<string, string>>> requests;
+
 
 void
 tema1_prog_1(char *host)
@@ -28,6 +31,16 @@ tema1_prog_1(char *host)
 	}
 #endif	/* DEBUG */
 
+	for (const auto& request : requests) {
+        if (request.second.first == REQUEST) {
+			request_authorization_1_arg = (char *)request.first.c_str();
+			result_1 = request_authorization_1(&request_authorization_1_arg, clnt);
+			if (result_1 == (char **) NULL) {
+				clnt_perror (clnt, "call failed");
+			}
+			cout << "REZULTATTATATATAT = " <<*result_1 << endl;
+		}
+    }
 	result_1 = request_authorization_1(&request_authorization_1_arg, clnt);
 	if (result_1 == (char **) NULL) {
 		clnt_perror (clnt, "call failed");
@@ -50,8 +63,7 @@ tema1_prog_1(char *host)
 }
 
 
-int
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
 	char *host;
 
@@ -61,15 +73,36 @@ main (int argc, char *argv[])
 	}
 	host = argv[1];
 
-	FILE* fp;
-	fp = fopen(argv[2], READ_ONLY);
+	ifstream inputFile(argv[2]); // Replace "your_file_path.txt" with the actual path to your file
+    if (!inputFile.is_open()) {
+        cerr << "Unable to open the file." << endl;
+        return 1;
+    }
 
-	if (fp == NULL) {
-		printf("Error opening file!\n");
-		exit(1);
-	}
+    // Read each line from the file
+    string line;
+    while (getline(inputFile, line)) {
+        istringstream iss(line);
 
-	
+        // Parse the comma-separated values
+        string client_id, operation_str, third_str;
+        getline(iss, client_id, ',');
+        getline(iss, operation_str, ',');
+        getline(iss, third_str, ',');
+		// Add the requests as a pair to the list
+		requests.push_back({client_id, {operation_str, third_str}});
+
+    }
+
+    // Close the file
+    inputFile.close();
+
+    // Print the stored requests
+    for (const auto& entry : requests) {
+        cout << "Client ID: " << entry.first << ", Operation: " << entry.second.first
+             << ", With Refresh: " << entry.second.second << endl;
+    }
+
 	tema1_prog_1 (host);
-exit (0);
+    return 0;
 }

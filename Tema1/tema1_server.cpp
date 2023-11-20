@@ -5,15 +5,19 @@
  */
 
 #include "tema1.h"
+#include "token.h"
+
+unordered_map<string, list<string>> users;
+vector<string> userIds;
+vector<string> resourceNames;
+list<list<map<string, vector<string>>>> approvals;
 
 char **
 request_authorization_1_svc(char **argp, struct svc_req *rqstp)
 {
 	static char * result;
 
-	/*
-	 * insert server code here
-	 */
+	result = generate_access_token(*argp);
 
 	return &result;
 }
