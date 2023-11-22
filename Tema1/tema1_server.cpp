@@ -35,9 +35,11 @@ request_access_token_1_svc(struct request_access_arg *argp, struct svc_req *rqst
 {
 	static struct request_access_response result;
 	result.access_token = generate_access_token(argp->request_token);
+	users[string(argp->name)].push_back(string(*(&result.access_token)));
 	cout << "  AccessToken = " << *(&result.access_token) << endl;
 	if (argp->with_refresh == 1) {
 		result.refresh_token = generate_access_token(*(&result.access_token));
+		users[string(argp->name)].push_back(string(*(&result.refresh_token)));
 	}
 	else {
 		result.refresh_token = (char *) NO_REFRESH_TOKEN;
@@ -66,9 +68,57 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 {
 	static struct validate_action_response  result;
 
-	/*
-	 * insert server code here
-	 */
+	string operation = string(argp->operation);
+	string resource = string(argp->resource);
+	string access_token = string(argp->access_token);
+
+	int n = 0;
+	for (auto& user : users) {
+		if (user.second.size() > 1 && user.second[1] == access_token) {
+			if (operation == READ) {
+				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "R") != approvals.at(n)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+				}
+				else {
+					result.result = (char *) PERMISSION_DENIED;
+				}
+			}
+			if (operation == INSERT) {
+				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "I") != approvals.at(n)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+				}
+				else {
+					result.result = (char *) PERMISSION_DENIED;
+				}
+			}
+			if (operation == MODIFY) {
+				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "M") != approvals.at(n)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+				}
+				else {
+					result.result = (char *) PERMISSION_DENIED;
+				}
+			}
+			if (operation == DELETE) {
+				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "D") != approvals.at(n)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+				}
+				else {
+					result.result = (char *) PERMISSION_DENIED;
+				}
+			}
+			if (operation == EXECUTE) {
+				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "X") != approvals.at(n)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+				}
+				else {
+					result.result = (char *) PERMISSION_DENIED;
+				}
+			}
+
+		}
+		n++;
+	}
 
 	return &result;
 }

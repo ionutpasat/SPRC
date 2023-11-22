@@ -56,8 +56,6 @@ tema1_prog_1(char *host)
 				} else {
 					cout << response << " -> ";
 				}
-				// request_access_token_1_arg.name = (char *)malloc(sizeof(char) * request.first.length());
-				// request_access_token_1_arg.request_token =(char *) malloc(sizeof(char) * TOKEN_SIZE);
 				request_access_token_1_arg.name = (char *)request.first.c_str();
 				request_access_token_1_arg.request_token = (char *)response.c_str();
 				request_access_token_1_arg.with_refresh = stoi(request.second.second);
@@ -65,6 +63,7 @@ tema1_prog_1(char *host)
 				if (result_2 == (struct request_access_response *) NULL) {
 					clnt_perror (clnt, "call failed");
 				}
+				users[request.first].push_back(string(result_2->access_token));
 				cout << result_2->access_token;
 				if (string(result_2->refresh_token) == (char *)NO_REFRESH_TOKEN) {
 					cout << endl;
@@ -73,6 +72,15 @@ tema1_prog_1(char *host)
 				}
 			}
 
+		} else {
+			validate_delegated_action_1_arg.operation = (char *)request.second.first.c_str();
+			validate_delegated_action_1_arg.resource = (char *)request.second.second.c_str();
+			validate_delegated_action_1_arg.access_token = (char *)users[request.first].at(0).c_str();;
+			result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
+			if (result_3 == (struct validate_action_response *) NULL) {
+				clnt_perror (clnt, "call failed");
+			}
+			
 		}
     }
 	// result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
