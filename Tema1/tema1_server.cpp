@@ -7,17 +7,24 @@
 #include "tema1.h"
 #include "token.h"
 
-unordered_map<string, list<string>> users;
-vector<string> userIds;
-vector<string> resourceNames;
-list<list<map<string, vector<string>>>> approvals;
+unordered_map<string, vector<string>> users; 
 
 char **
 request_authorization_1_svc(char **argp, struct svc_req *rqstp)
 {
 	static char * result;
+	string userId = string(*argp);
+	cout << "BEGIN " << userId << " AUTHZ" << endl;
+	if (find(userIds.begin(), userIds.end(), userId) != userIds.end()) {
+		result = generate_access_token(*argp);
+		string req_token = string(*(&result));
+		users[userId].push_back(req_token);
+	}
+	else {
+		result = (char *) USER_NOT_FOUND;
+		return &result;
+	}
 
-	result = generate_access_token(*argp);
 
 	return &result;
 }
@@ -25,11 +32,9 @@ request_authorization_1_svc(char **argp, struct svc_req *rqstp)
 struct request_access_response *
 request_access_token_1_svc(struct request_access_arg *argp, struct svc_req *rqstp)
 {
-	static struct request_access_response  result;
+	static struct request_access_response result;
 
-	/*
-	 * insert server code here
-	 */
+	
 
 	return &result;
 }
@@ -51,9 +56,13 @@ approve_request_token_1_svc(char **argp, struct svc_req *rqstp)
 {
 	static struct approve_request_response  result;
 
-	/*
-	 * insert server code here
-	 */
+	if (!approvals.at(index).empty()) {
+		result.with_sign = 1;
+		cout << "RequestToken = " << *argp << endl;
+	} else {
+		result.with_sign = 0;
+	}
+	result.request_token = *argp;
 
 	return &result;
 }

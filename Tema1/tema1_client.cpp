@@ -8,20 +8,21 @@
 
 // Create a list to store the requests
 list<pair<string, pair<string, string>>> requests;
+unordered_map<string, vector<string>> users;
 
 
 void
 tema1_prog_1(char *host)
 {
 	CLIENT *clnt;
-	char * *result_1;
 	char * request_authorization_1_arg;
-	struct request_access_response  *result_2;
-	struct request_access_arg  request_access_token_1_arg;
-	struct validate_action_response  *result_3;
-	struct validate_action_arg  validate_delegated_action_1_arg;
-	struct approve_request_response  *result_4;
+	char * *result_1;
 	char * approve_request_token_1_arg;
+	struct approve_request_response  *result_4;
+	struct request_access_arg  request_access_token_1_arg;
+	struct request_access_response  *result_2;
+	struct validate_action_arg  validate_delegated_action_1_arg;
+	struct validate_action_response  *result_3;
 
 #ifndef	DEBUG
 	clnt = clnt_create (host, tema1_prog, tema1_vers, "udp");
@@ -38,25 +39,42 @@ tema1_prog_1(char *host)
 			if (result_1 == (char **) NULL) {
 				clnt_perror (clnt, "call failed");
 			}
-			cout << "REZULTATTATATATAT = " <<*result_1 << endl;
+			string response = string(*result_1);
+			if (response == USER_NOT_FOUND) {
+				cout << USER_NOT_FOUND << endl;
+				continue;
+			} else {
+				cout << response << "-> ";
+				users[request.first].push_back(response);
+				approve_request_token_1_arg = (char *)response.c_str();
+				result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
+				if (result_4 == (struct approve_request_response *) NULL) {
+					clnt_perror (clnt, "call failed");
+				}
+				if (result_4->with_sign == 0) {
+					cout << REQUEST_DENIED << endl;
+					continue;
+				}
+				// request_access_token_1_arg.name = (char *)request.first.c_str();
+				// request_access_token_1_arg.request_token = (char *)response.c_str();
+				// request_access_token_1_arg.with_refresh = stoi(request.second.second);
+				// result_2 = request_access_token_1(&request_access_token_1_arg, clnt);
+				// if (result_2 == (struct request_access_response *) NULL) {
+				// 	clnt_perror (clnt, "call failed");
+				// }
+				// cout << result_2->access_token << endl;
+			}
+
 		}
     }
-	result_1 = request_authorization_1(&request_authorization_1_arg, clnt);
-	if (result_1 == (char **) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_2 = request_access_token_1(&request_access_token_1_arg, clnt);
-	if (result_2 == (struct request_access_response *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
-	if (result_3 == (struct validate_action_response *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
-	if (result_4 == (struct approve_request_response *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+	// result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
+	// if (result_3 == (struct validate_action_response *) NULL) {
+	// 	clnt_perror (clnt, "call failed");
+	// }
+	// result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
+	// if (result_4 == (struct approve_request_response *) NULL) {
+	// 	clnt_perror (clnt, "call failed");
+	// }
 #ifndef	DEBUG
 	clnt_destroy (clnt);
 #endif	 /* DEBUG */
@@ -98,10 +116,10 @@ int main (int argc, char *argv[])
     inputFile.close();
 
     // Print the stored requests
-    for (const auto& entry : requests) {
-        cout << "Client ID: " << entry.first << ", Operation: " << entry.second.first
-             << ", With Refresh: " << entry.second.second << endl;
-    }
+    // for (const auto& entry : requests) {
+    //     cout << "Client ID: " << entry.first << ", Operation: " << entry.second.first
+    //          << ", With Refresh: " << entry.second.second << endl;
+    // }
 
 	tema1_prog_1 (host);
     return 0;

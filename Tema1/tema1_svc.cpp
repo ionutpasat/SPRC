@@ -16,6 +16,13 @@
 #define SIG_PF void(*)(int)
 #endif
 
+// Create a vector to store the user IDs
+vector<string> userIds;
+// Create a vector to store the resources
+vector<string> resourceNames;
+// Create a list to store the data
+vector<map<string, vector<string>>> approvals;
+
 static void
 tema1_prog_1(struct svc_req *rqstp, SVCXPRT *transp)
 {
@@ -130,9 +137,6 @@ main (int argc, char **argv)
 	int numIds;
     ids_file >> numIds;
 
-    // Create a vector to store the user IDs
-    vector<string> userIds;
-
     // Read each user ID from the file
     string userId;
     for (int i = 0; i < numIds; ++i) {
@@ -144,17 +148,14 @@ main (int argc, char **argv)
     ids_file.close();
 
     // Print the stored user IDs
-    cout << "User IDs:" << endl;
-    for (const auto& id : userIds) {
-        cout << id << endl;
-    }
+    // cout << "User IDs:" << endl;
+    // for (const auto& id : userIds) {
+    //     cout << id << endl;
+    // }
 
 	// Read the number of resources
     int numResources;
     resources_file >> numResources;
-
-    // Create a vector to store the resources
-    vector<string> resourceNames;
 
     // Read each resource name from the file
     string resourceName;
@@ -167,14 +168,10 @@ main (int argc, char **argv)
     resources_file.close();
 
     // Print the stored resource names
-    cout << "Resource Names:" << endl;
-    for (const auto& resource : resourceNames) {
-        cout << resource << endl;
-    }
-
-
-    // Create a list to store the data
-    list<list<map<string, vector<string>>>> approvals;
+    // cout << "Resource Names:" << endl;
+    // for (const auto& resource : resourceNames) {
+    //     cout << resource << endl;
+    // }
 
     // Read each line from the file
     string line;
@@ -183,15 +180,14 @@ main (int argc, char **argv)
 
         // Parse the comma-separated values
         string token;
-        list<map<string, vector<string>>> fileData;
+        map<string, vector<string>> fileEntry;
 
         while (getline(iss, token, ',')) {
-            map<string, vector<string>> fileEntry;
 
             // Handle *,- case
             if (token == "*") {
                 // Add empty map to represent no permissions
-                fileData.push_back({});
+                fileEntry = {};
             } else {
                 // File name
                 string key = token;
@@ -210,24 +206,21 @@ main (int argc, char **argv)
                     fileEntry[key] = permissions;
 
                     // Add the file entry to the list
-                    fileData.push_back(fileEntry);
                 } else {
                     // Skip this entry as it's not in the resourceNames vector
                     getline(iss, token, ',');  // Consume permissions part
                 }
             }
         }
-
         // Add the list of file data to the main data list
-        approvals.push_back(fileData);
+        approvals.push_back(fileEntry);
     }
 
     // Close the file
     approvals_file.close();
 
     // Print the stored data
-    for (const auto& fileDataList : approvals) {
-        for (const auto& fileEntry : fileDataList) {
+    for (const auto& fileEntry : approvals) {
             if (!fileEntry.empty()) {
                 for (const auto& entry : fileEntry) {
                     cout << "File: " << entry.first << ", Permissions: ";
@@ -239,7 +232,6 @@ main (int argc, char **argv)
             } else {
                 cout << "No permissions for anything" << endl;
             }
-        }
         cout << "----------" << endl;
     }
 

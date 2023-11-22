@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#define TOKEN_LEN 15
+#define TOKEN_SIZE 16
 #define LINE_SIZE 120
 
 #define READ_ONLY "r"
@@ -42,15 +42,14 @@ using namespace std;
 #define DELETE "DELETE"
 #define EXECUTE "EXECUTE"
 
-// Create a vector to store user data
-extern unordered_map<string, list<string>> users;
-// Create a vector to store the user IDs
+ // Create a vector to store the user IDs
 extern vector<string> userIds;
  // Create a vector to store the resources
 extern vector<string> resourceNames;
 // Create a vector to store the approvals for each request
-extern list<list<map<string, vector<string>>>> approvals;
+extern vector<map<string, vector<string>>> approvals;
 extern int token_lifetime;
+int index = 0;
 
 #ifdef __cplusplus
 extern "C"
