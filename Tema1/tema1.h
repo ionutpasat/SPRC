@@ -49,7 +49,6 @@ extern vector<string> resourceNames;
 // Create a vector to store the approvals for each request
 extern vector<map<string, vector<string>>> approvals;
 extern int token_lifetime;
-int index = 0;
 
 #ifdef __cplusplus
 extern "C"

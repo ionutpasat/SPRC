@@ -220,20 +220,20 @@ main (int argc, char **argv)
     approvals_file.close();
 
     // Print the stored data
-    for (const auto& fileEntry : approvals) {
-            if (!fileEntry.empty()) {
-                for (const auto& entry : fileEntry) {
-                    cout << "File: " << entry.first << ", Permissions: ";
-                    for (const auto& permission : entry.second) {
-                        cout << permission << " ";
-                    }
-                    cout << endl;
-                }
-            } else {
-                cout << "No permissions for anything" << endl;
-            }
-        cout << "----------" << endl;
-    }
+    // for (const auto& fileEntry : approvals) {
+    //         if (!fileEntry.empty()) {
+    //             for (const auto& entry : fileEntry) {
+    //                 cout << "File: " << entry.first << ", Permissions: ";
+    //                 for (const auto& permission : entry.second) {
+    //                     cout << permission << " ";
+    //                 }
+    //                 cout << endl;
+    //             }
+    //         } else {
+    //             cout << "No permissions for anything" << endl;
+    //         }
+    //     cout << "----------" << endl;
+    // }
 
 	svc_run ();
 	fprintf (stderr, "%s", "svc_run returned");

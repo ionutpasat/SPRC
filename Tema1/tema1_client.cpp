@@ -44,7 +44,6 @@ tema1_prog_1(char *host)
 				cout << USER_NOT_FOUND << endl;
 				continue;
 			} else {
-				cout << response << "-> ";
 				users[request.first].push_back(response);
 				approve_request_token_1_arg = (char *)response.c_str();
 				result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
@@ -54,15 +53,24 @@ tema1_prog_1(char *host)
 				if (result_4->with_sign == 0) {
 					cout << REQUEST_DENIED << endl;
 					continue;
+				} else {
+					cout << response << " -> ";
 				}
-				// request_access_token_1_arg.name = (char *)request.first.c_str();
-				// request_access_token_1_arg.request_token = (char *)response.c_str();
-				// request_access_token_1_arg.with_refresh = stoi(request.second.second);
-				// result_2 = request_access_token_1(&request_access_token_1_arg, clnt);
-				// if (result_2 == (struct request_access_response *) NULL) {
-				// 	clnt_perror (clnt, "call failed");
-				// }
-				// cout << result_2->access_token << endl;
+				// request_access_token_1_arg.name = (char *)malloc(sizeof(char) * request.first.length());
+				// request_access_token_1_arg.request_token =(char *) malloc(sizeof(char) * TOKEN_SIZE);
+				request_access_token_1_arg.name = (char *)request.first.c_str();
+				request_access_token_1_arg.request_token = (char *)response.c_str();
+				request_access_token_1_arg.with_refresh = stoi(request.second.second);
+				result_2 = request_access_token_1(&request_access_token_1_arg, clnt);
+				if (result_2 == (struct request_access_response *) NULL) {
+					clnt_perror (clnt, "call failed");
+				}
+				cout << result_2->access_token;
+				if (string(result_2->refresh_token) == (char *)NO_REFRESH_TOKEN) {
+					cout << endl;
+				} else {
+					cout << "," << result_2->refresh_token << endl;
+				}
 			}
 
 		}
