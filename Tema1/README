@@ -56,3 +56,8 @@ Am ales sa fac logica de refresh a tokenilor in server deoarece din cum am intel
 user-ul opteaza pentru refresh-ul automat al tokenilor pentru a putea executa operatii indiferent
 daca token-ul i-a expirat. Daca in schimb as anunta user-ul ca token-ul i-a expirat si ca trebuie sa
 initieze el o cerere de refresh nu mai vad unde ar fi partea automata de refresh.
+
+To run:
+    make && ./check.sh all
+CLean rule does not delete everything, only the executables and the object files.
+Added newline to the end of all ref output files.
