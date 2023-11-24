@@ -7,8 +7,14 @@
 #include "tema1.h"
 #include "token.h"
 
-unordered_map<string, unordered_map<string, string>> users; 
+// map to store users and their information
+unordered_map<string, unordered_map<string, string>> users;
+// index of the current approval which will be used for the next authorization request
 int approval_index = 0;
+
+void update_token_lifetime() {
+
+}
 
 char **
 request_authorization_1_svc(char **argp, struct svc_req *rqstp)
@@ -16,12 +22,15 @@ request_authorization_1_svc(char **argp, struct svc_req *rqstp)
 	static char * result;
 	string userId = string(*argp);
 	cout << "BEGIN " << userId << " AUTHZ" << endl;
+	// If the user is found in the database
 	if (find(userIds.begin(), userIds.end(), userId) != userIds.end()) {
+		// Generate a request token for the user
 		result = generate_access_token(*argp);
 		string req_token = string(*(&result));
 		users[userId]["request_token"] = req_token;
 	}
 	else {
+		// If the user is not found in the database the client is notified that the user is not found
 		result = (char *) USER_NOT_FOUND;
 		return &result;
 	}
@@ -37,6 +46,7 @@ request_access_token_1_svc(struct request_access_arg *argp, struct svc_req *rqst
 	result.access_token = generate_access_token(argp->request_token);
 	users[string(argp->name)]["access_token"] = string(*(&result.access_token));
 	cout << "  AccessToken = " << *(&result.access_token) << endl;
+	// If the user has auto refresh the refresh token is generated
 	if (argp->with_refresh == 1) {
 		result.refresh_token = generate_access_token(*(&result.access_token));
 		users[string(argp->name)]["with_refresh"] = "1";
@@ -44,24 +54,14 @@ request_access_token_1_svc(struct request_access_arg *argp, struct svc_req *rqst
 		cout << "  RefreshToken = " << *(&result.refresh_token) << endl;
 	}
 	else {
+		// If the user doesn t have auto refresh the refresh token is set to 0
 		users[string(argp->name)]["with_refresh"] = "0";
 		result.refresh_token = (char *) NO_REFRESH_TOKEN;
 	}
 	result.error_flag = 0;
 	result.error_message = (char *) NO_ERROR;
+	// Now we expect another request so the approvals index is increased
 	approval_index++;
-	// string userId = string(argp->name);
-	// string req_token = string(argp->request_token);
-	// int refresh = argp->with_refresh;
-	// users[userId].push_back(to_string(approval_index));
-	// approval_index++;
-	// result.access_token = generate_access_token((char *)req_token.c_str());
-	// if (refresh == 1) {
-	// 	result.refresh_token = generate_access_token(*(&result.access_token));
-	// }
-	// else {
-	// 	result.refresh_token = (char *) NO_REFRESH_TOKEN;
-	// }
 
 	return &result;
 }
@@ -75,6 +75,7 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 	string resource = string(argp->resource);
 	string access_token = string(argp->access_token);
 
+	// If user sent no access token the request is denied
 	if (access_token == NO_ACCESS_TOKEN) {
 		result.result = (char* )PERMISSION_DENIED;
 		result.new_access_token = (char *) NO_ACCESS_TOKEN;
@@ -83,11 +84,15 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 		return &result;
 	}
 
+	// For every user in the database
 	for (auto& user : users) {
+		// Search for the one with the sent access token
 		if (user.second["access_token"] == access_token) {
+			// Get the index of the approval for the user
 			int app_index = stoi(user.second["approval_index"]);
 			result.new_access_token = (char *) NO_ACCESS_TOKEN;
 			result.access_token_refreshed = 0;
+			// If the resource is not found in the approvals list the request is denied
 			if (find(resourceNames.begin(), resourceNames.end(), resource) == resourceNames.end()) {
 				result.result = (char *) RESOURCE_NOT_FOUND;
 				int token_expiration = stoi(user.second["token_lifetime"]);
@@ -97,6 +102,7 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 
+			// If the token is expired and the user doesn t have auto refresh the request is denied
 			if (user.second["token_lifetime"] == "0") {
 				if (user.second["with_refresh"] == "0") {
 						result.result = (char *) TOKEN_EXPIRED;
@@ -105,6 +111,7 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 						cout << "DENY (" << operation << "," << resource << ",," << user.second["token_lifetime"] << ")" << endl;
 						return &result;
 				} else {
+					// If the user has auto refresh the access token and refresh token are refreshed
 					cout << "BEGIN " << user.first << " AUTHZ REFRESH" << endl;
 					char * new_access_token = generate_access_token((char *)user.second["refresh_token"].c_str());
 					char * new_refresh_token = generate_access_token(new_access_token);
@@ -118,6 +125,7 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				}
 			}
 
+			// If the opeeration is not a valid operation the request is denied
 			if (operation != READ && operation != INSERT && operation != MODIFY && operation != DELETE && operation != EXECUTE) {
 				user.second["token_lifetime"] = to_string(stoi(user.second["token_lifetime"]) - 1);
 				result.result = (char *) OPERATION_NOT_PERMITTED;
@@ -127,10 +135,14 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 
+			// If we get here it means that the operation is valid and the resource is found in the approvals list
+			// So the token lifetime is decreased
+			int token_expiration = stoi(user.second["token_lifetime"]);
+			token_expiration--;
+			user.second["token_lifetime"] = to_string(token_expiration);
+
+			// If the user has the right permission the request is granted
 			if (operation == READ) {
-				int token_expiration = stoi(user.second["token_lifetime"]);
-				token_expiration--;
-				user.second["token_lifetime"] = to_string(token_expiration);
 				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "R") != approvals.at(app_index)[resource].end()) {
 					result.result = (char *) PERMISSION_GRANTED;
 					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
@@ -142,9 +154,6 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 			if (operation == INSERT) {
-				int token_expiration = stoi(user.second["token_lifetime"]);
-				token_expiration--;
-				user.second["token_lifetime"] = to_string(token_expiration);
 				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "I") != approvals.at(app_index)[resource].end()) {
 					result.result = (char *) PERMISSION_GRANTED;
 					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
@@ -156,9 +165,6 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 			if (operation == MODIFY) {
-				int token_expiration = stoi(user.second["token_lifetime"]);
-				token_expiration--;
-				user.second["token_lifetime"] = to_string(token_expiration);
 				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "M") != approvals.at(app_index)[resource].end()) {
 					result.result = (char *) PERMISSION_GRANTED;
 					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
@@ -170,9 +176,6 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 			if (operation == DELETE) {
-				int token_expiration = stoi(user.second["token_lifetime"]);
-				token_expiration--;
-				user.second["token_lifetime"] = to_string(token_expiration);
 				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "D") != approvals.at(app_index)[resource].end()) {
 					result.result = (char *) PERMISSION_GRANTED;
 					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
@@ -184,9 +187,6 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 				return &result;
 			}
 			if (operation == EXECUTE) {
-				int token_expiration = stoi(user.second["token_lifetime"]);
-				token_expiration--;
-				user.second["token_lifetime"] = to_string(token_expiration);
 				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "X") != approvals.at(app_index)[resource].end()) {
 					result.result = (char *) PERMISSION_GRANTED;
 					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
@@ -210,6 +210,7 @@ struct approve_request_response *
 approve_request_token_1_svc(char **argp, struct svc_req *rqstp)
 {
 	static struct approve_request_response  result;
+	// Store the approval index and token lifetime for the user that sent the request
 	for (auto& user : users) {
 		if (user.second["request_token"] == string(*argp)) {
 			user.second["approval_index"] = to_string(approval_index);
@@ -217,6 +218,8 @@ approve_request_token_1_svc(char **argp, struct svc_req *rqstp)
 		}
 	}
 
+	// If the approval list at the current index is not empty the request is approved
+	// It is empty for */-
 	if (!approvals.at(approval_index).empty()) {
 		result.with_sign = 1;
 		cout << "  RequestToken = " << *argp << endl;

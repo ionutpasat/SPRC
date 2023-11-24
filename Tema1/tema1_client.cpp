@@ -8,6 +8,7 @@
 
 // Create a list to store the requests
 list<pair<string, pair<string, string>>> requests;
+// Create a map to store the users and their tokens
 unordered_map<string, vector<string>> users;
 
 
@@ -32,37 +33,44 @@ tema1_prog_1(char *host)
 	}
 #endif	/* DEBUG */
 
+	// Execute every request that was read
 	for (const auto& request : requests) {
+		// If it's a request for authorization
         if (request.second.first == REQUEST) {
-			// cout << "USEEEEEEEEEEER = " << request.first << endl;
 			request_authorization_1_arg = (char *)request.first.c_str();
+			// Call the first authorization process and get the request token
 			result_1 = request_authorization_1(&request_authorization_1_arg, clnt);
 			if (result_1 == (char **) NULL) {
 				clnt_perror (clnt, "call failed");
 			}
 			string response = string(*result_1);
+			// If the user was not found, print the error message
 			if (response == USER_NOT_FOUND) {
 				cout << USER_NOT_FOUND << endl;
 				continue;
 			} else {
+				// If the user was found, store the request token
 				if (users.find(request.first) == users.end()) {
 				users[request.first].push_back(response);
 				} else {
 					users[request.first] = vector<string>();
 					users[request.first].push_back(response);
 				}
+				// Call the second authorization process and get the request token signature
 				approve_request_token_1_arg = (char *)response.c_str();
-				// cout << "REQUEST_TOKEN = " << response << endl;
 				result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
 				if (result_4 == (struct approve_request_response *) NULL) {
 					clnt_perror (clnt, "call failed");
 				}
+				// If the request token signature is invalid, print the error message
 				if (result_4->with_sign == 0) {
 					cout << REQUEST_DENIED << endl;
 					continue;
 				} else {
 					cout << response << " -> ";
 				}
+				// Call the third authorization process and get the access token
+				// and the refresh token if the user requested it
 				request_access_token_1_arg.name = (char *)request.first.c_str();
 				request_access_token_1_arg.request_token = (char *)response.c_str();
 				request_access_token_1_arg.with_refresh = stoi(request.second.second);
@@ -80,6 +88,7 @@ tema1_prog_1(char *host)
 			}
 
 		} else {
+			// If it's a request for executing a certain operation
 			if (users.find(request.first) == users.end() || users[request.first].size() == 1) {
 				validate_delegated_action_1_arg.access_token = (char *)NO_ACCESS_TOKEN;
 			} else {
@@ -87,34 +96,22 @@ tema1_prog_1(char *host)
 				char * accToken = (char *)acc_token.c_str();
 				validate_delegated_action_1_arg.access_token = accToken;
 			}
+			// Make a call to the server to execute the operation
 			validate_delegated_action_1_arg.operation = (char *)request.second.first.c_str();
 			validate_delegated_action_1_arg.resource = (char *)request.second.second.c_str();
 			result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
 			if (result_3 == (struct validate_action_response *) NULL) {
 				clnt_perror (clnt, "call failed");
 			}
+			// If the access token expired, the server updated it and the client has to do so too
 			if (result_3->access_token_refreshed == 1) {
 				users[request.first].at(1) = string(result_3->new_access_token);
 			}
+			// Print the result of the operation
 			cout << result_3->result << endl;
-			// for (const auto& entry : users) {
-			// 		cout << "Client ID: " << entry.first << ", Tokens: ";
-			// 		for (const auto& token : entry.second) {
-			// 			cout << token << " ";
-			// 		}
-			// 		cout << endl;
-			// }
-			
 		}
     }
-	// result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
-	// if (result_3 == (struct validate_action_response *) NULL) {
-	// 	clnt_perror (clnt, "call failed");
-	// }
-	// result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
-	// if (result_4 == (struct approve_request_response *) NULL) {
-	// 	clnt_perror (clnt, "call failed");
-	// }
+
 #ifndef	DEBUG
 	clnt_destroy (clnt);
 #endif	 /* DEBUG */
@@ -131,7 +128,7 @@ int main (int argc, char *argv[])
 	}
 	host = argv[1];
 
-	ifstream inputFile(argv[2]); // Replace "your_file_path.txt" with the actual path to your file
+	ifstream inputFile(argv[2]);
     if (!inputFile.is_open()) {
         cerr << "Unable to open the file." << endl;
         return 1;
@@ -154,12 +151,6 @@ int main (int argc, char *argv[])
 
     // Close the file
     inputFile.close();
-
-    // Print the stored requests
-    // for (const auto& entry : requests) {
-    //     cout << "Client ID: " << entry.first << ", Operation: " << entry.second.first
-    //          << ", With Refresh: " << entry.second.second << endl;
-    // }
 
 	tema1_prog_1 (host);
     return 0;

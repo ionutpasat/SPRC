@@ -1,0 +1,58 @@
+Pasat Ionut-Vladut 344C1 Tema 1 SPRC - RPC
+
+Structura fisierului .x:
+____string request_authorization(string)____
+- primeste id-ul userului si intoarce un request token
+____struct approve_request_response approve_request_token(string)____
+- primeste request token-ul si intoarce un flag care indica daca
+request token-ul a fost semnat si request token-ul
+____struct request_access_response request_access_token(struct request_access_arg)____
+- primeste id-ul userului, request token-ul si un flag care indica daca
+userul doreste si un refresh token si intoarce un access token si un
+refresh token
+____struct validate_action_response validate_delegated_action(struct validate_action_arg)____
+- primeste un access token, o operatie si resursa pe care se doreste a se face
+operatia si intoarce un rezultat, un flag care indica daca executarea operatiei
+a necesitat un refresh de tokeni si un nou access token in caz ca s a facut refresh
+
+Client:
+- citeste din fisierul de intrare si pastreaza request-urile intr-o lista
+de forma <id_user, <operation, resource>> sau <id_user, <operation, 0/1>> in cazul
+in care operation = REQUEST
+- in cazul in care operation = REQUEST, urmeaza flow-ul de autentificare
+request_auth -> approve_request -> request_access si pastreaza informatiile intoarse
+de server intr un map cu cheia id_user
+- in cazul in care operation != REQUEST, se face apelul pentru a executa operatia
+dorita si afiseaza ce intoarce serverul
+
+Server:
+- pastreaza datele user-ilor intr-un map de forma <id_user, <nume_date, valoare_date>>
+- approval_index va indica ce resurse va primi fiecare user din approvals db
+
+- pentru apelul de request_authorization, se verifica daca userul exista in db -> 
+daca da, se genereaza si se intoarce un request token, daca nu, se intoarce 
+un mesaj de eroare USER_NOT_FOUND
+
+- pentru apelul de approve_request_token, se verifica ce approvals are userul
+si daca are cel putin una atunci request token-ul este intors semnat (reprezentat
+printr un flag )
+- pentru apelul de request_access_token, se genereaza un access token si ulterior
+un refresh token in cazul in care user-ul a optat pentru acesta folosind un flag
+dat ca parametru si se intorc cei doi tokeni
+
+- pentru apelul de validate_delegated_action, se verifica daca userul are un access
+token valid. Daca nu are se respinge cererea si se intoarce un raspuns corespunzator.
+Daca are, se verifica daca resursa ce se incearca a fi accesata exista; daca nu exista
+se respinge cererea si se intoarce un raspuns corespunzator. Daca exista, se verifica
+daca token-ul mai are utilizari; daca nu mai are si a optat pentru refresh automat
+se face refresh si se intoarce un nou access/refresh token, iar operatia este executata.
+Daca nu mai are si nu a optat pentru refresh automat, se respinge cererea si se intoarce
+un raspuns corespunzator. Daca mai are utilizari, se verifica daca operatia este permisa
+pentru resursa respectiva; daca nu este permisa se respinge cererea si se intoarce un
+raspuns corespunzator. Daca este permisa, se executa operatia si se intoarce un raspuns
+corespunzator.
+
+Am ales sa fac logica de refresh a tokenilor in server deoarece din cum am inteles eu cerinta
+user-ul opteaza pentru refresh-ul automat al tokenilor pentru a putea executa operatii indiferent
+daca token-ul i-a expirat. Daca in schimb as anunta user-ul ca token-ul i-a expirat si ca trebuie sa
+initieze el o cerere de refresh nu mai vad unde ar fi partea automata de refresh.

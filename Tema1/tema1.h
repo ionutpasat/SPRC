@@ -19,10 +19,6 @@
 using namespace std;
 
 #define TOKEN_SIZE 16
-#define LINE_SIZE 120
-
-#define READ_ONLY "r"
-#define TOKEN_DELIMS ",\r\n"
 
 #define REQUEST "REQUEST"
 #define USER_NOT_FOUND "USER_NOT_FOUND"
@@ -48,6 +44,7 @@ extern vector<string> userIds;
 extern vector<string> resourceNames;
 // Create a vector to store the approvals for each request
 extern vector<map<string, vector<string>>> approvals;
+// Initial token uses
 extern int token_lifetime;
 
 #ifdef __cplusplus

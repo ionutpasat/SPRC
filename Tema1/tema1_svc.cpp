@@ -22,6 +22,7 @@ vector<string> userIds;
 vector<string> resourceNames;
 // Create a list to store the data
 vector<map<string, vector<string>>> approvals;
+// Initial token uses
 int token_lifetime;
 
 static void
@@ -118,6 +119,7 @@ main (int argc, char **argv)
 	ifstream ids_file(argv[1]);
 	ifstream resources_file(argv[2]);
 	ifstream approvals_file(argv[3]);
+    //Read token lifetime
 	token_lifetime = atoi(argv[4]);
 
 	if (!ids_file.is_open()) {
@@ -148,11 +150,6 @@ main (int argc, char **argv)
     // Close the file
     ids_file.close();
 
-    // Print the stored user IDs
-    // cout << "User IDs:" << endl;
-    // for (const auto& id : userIds) {
-    //     cout << id << endl;
-    // }
 
 	// Read the number of resources
     int numResources;
@@ -168,11 +165,6 @@ main (int argc, char **argv)
     // Close the file
     resources_file.close();
 
-    // Print the stored resource names
-    // cout << "Resource Names:" << endl;
-    // for (const auto& resource : resourceNames) {
-    //     cout << resource << endl;
-    // }
 
     // Read each line from the file
     string line;
@@ -209,7 +201,7 @@ main (int argc, char **argv)
                     // Add the file entry to the list
                 } else {
                     // Skip this entry as it's not in the resourceNames vector
-                    getline(iss, token, ',');  // Consume permissions part
+                    getline(iss, token, ',');
                 }
             }
         }
@@ -219,22 +211,6 @@ main (int argc, char **argv)
 
     // Close the file
     approvals_file.close();
-
-    // Print the stored data
-    // for (const auto& fileEntry : approvals) {
-    //         if (!fileEntry.empty()) {
-    //             for (const auto& entry : fileEntry) {
-    //                 cout << "File: " << entry.first << ", Permissions: ";
-    //                 for (const auto& permission : entry.second) {
-    //                     cout << permission << " ";
-    //                 }
-    //                 cout << endl;
-    //             }
-    //         } else {
-    //             cout << "No permissions for anything" << endl;
-    //         }
-    //     cout << "----------" << endl;
-    // }
 
 	svc_run ();
 	fprintf (stderr, "%s", "svc_run returned");
