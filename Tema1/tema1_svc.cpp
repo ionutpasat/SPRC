@@ -22,6 +22,7 @@ vector<string> userIds;
 vector<string> resourceNames;
 // Create a list to store the data
 vector<map<string, vector<string>>> approvals;
+int token_lifetime;
 
 static void
 tema1_prog_1(struct svc_req *rqstp, SVCXPRT *transp)
@@ -117,7 +118,7 @@ main (int argc, char **argv)
 	ifstream ids_file(argv[1]);
 	ifstream resources_file(argv[2]);
 	ifstream approvals_file(argv[3]);
-	int token_lifetime = atoi(argv[4]);
+	token_lifetime = atoi(argv[4]);
 
 	if (!ids_file.is_open()) {
         cerr << "Error opening the ids_file." << endl;

@@ -7,7 +7,7 @@
 #include "tema1.h"
 #include "token.h"
 
-unordered_map<string, vector<string>> users; 
+unordered_map<string, unordered_map<string, string>> users; 
 int approval_index = 0;
 
 char **
@@ -19,7 +19,7 @@ request_authorization_1_svc(char **argp, struct svc_req *rqstp)
 	if (find(userIds.begin(), userIds.end(), userId) != userIds.end()) {
 		result = generate_access_token(*argp);
 		string req_token = string(*(&result));
-		users[userId].push_back(req_token);
+		users[userId]["request_token"] = req_token;
 	}
 	else {
 		result = (char *) USER_NOT_FOUND;
@@ -35,13 +35,16 @@ request_access_token_1_svc(struct request_access_arg *argp, struct svc_req *rqst
 {
 	static struct request_access_response result;
 	result.access_token = generate_access_token(argp->request_token);
-	users[string(argp->name)].push_back(string(*(&result.access_token)));
+	users[string(argp->name)]["access_token"] = string(*(&result.access_token));
 	cout << "  AccessToken = " << *(&result.access_token) << endl;
 	if (argp->with_refresh == 1) {
 		result.refresh_token = generate_access_token(*(&result.access_token));
-		users[string(argp->name)].push_back(string(*(&result.refresh_token)));
+		users[string(argp->name)]["with_refresh"] = "1";
+		users[string(argp->name)]["refresh_token"] = string(*(&result.refresh_token));
+		cout << "  RefreshToken = " << *(&result.refresh_token) << endl;
 	}
 	else {
+		users[string(argp->name)]["with_refresh"] = "0";
 		result.refresh_token = (char *) NO_REFRESH_TOKEN;
 	}
 	result.error_flag = 0;
@@ -72,54 +75,134 @@ validate_delegated_action_1_svc(struct validate_action_arg *argp, struct svc_req
 	string resource = string(argp->resource);
 	string access_token = string(argp->access_token);
 
-	int n = 0;
-	for (auto& user : users) {
-		if (user.second.size() > 1 && user.second[1] == access_token) {
-			if (operation == READ) {
-				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "R") != approvals.at(n)[resource].end()) {
-					result.result = (char *) PERMISSION_GRANTED;
-				}
-				else {
-					result.result = (char *) PERMISSION_DENIED;
-				}
-			}
-			if (operation == INSERT) {
-				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "I") != approvals.at(n)[resource].end()) {
-					result.result = (char *) PERMISSION_GRANTED;
-				}
-				else {
-					result.result = (char *) PERMISSION_DENIED;
-				}
-			}
-			if (operation == MODIFY) {
-				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "M") != approvals.at(n)[resource].end()) {
-					result.result = (char *) PERMISSION_GRANTED;
-				}
-				else {
-					result.result = (char *) PERMISSION_DENIED;
-				}
-			}
-			if (operation == DELETE) {
-				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "D") != approvals.at(n)[resource].end()) {
-					result.result = (char *) PERMISSION_GRANTED;
-				}
-				else {
-					result.result = (char *) PERMISSION_DENIED;
-				}
-			}
-			if (operation == EXECUTE) {
-				if (find(approvals.at(n)[resource].begin(), approvals.at(n)[resource].end(), "X") != approvals.at(n)[resource].end()) {
-					result.result = (char *) PERMISSION_GRANTED;
-				}
-				else {
-					result.result = (char *) PERMISSION_DENIED;
-				}
-			}
-
-		}
-		n++;
+	if (access_token == NO_ACCESS_TOKEN) {
+		result.result = (char* )PERMISSION_DENIED;
+		result.new_access_token = (char *) NO_ACCESS_TOKEN;
+		result.access_token_refreshed = 0;
+		cout << "DENY (" << operation << "," << resource << ",," << 0 << ")" << endl;
+		return &result;
 	}
 
+	for (auto& user : users) {
+		if (user.second["access_token"] == access_token) {
+			int app_index = stoi(user.second["approval_index"]);
+			result.new_access_token = (char *) NO_ACCESS_TOKEN;
+			result.access_token_refreshed = 0;
+			if (find(resourceNames.begin(), resourceNames.end(), resource) == resourceNames.end()) {
+				result.result = (char *) RESOURCE_NOT_FOUND;
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				return &result;
+			}
+
+			if (user.second["token_lifetime"] == "0") {
+				if (user.second["with_refresh"] == "0") {
+						result.result = (char *) TOKEN_EXPIRED;
+						result.new_access_token = (char *) NO_ACCESS_TOKEN;
+						result.access_token_refreshed = 0;
+						cout << "DENY (" << operation << "," << resource << ",," << user.second["token_lifetime"] << ")" << endl;
+						return &result;
+				} else {
+					cout << "BEGIN " << user.first << " AUTHZ REFRESH" << endl;
+					char * new_access_token = generate_access_token((char *)user.second["refresh_token"].c_str());
+					char * new_refresh_token = generate_access_token(new_access_token);
+					user.second["access_token"] = string(new_access_token);
+					user.second["refresh_token"] = string(new_refresh_token);
+					user.second["token_lifetime"] = to_string(token_lifetime);
+					cout << "  AccessToken = " << new_access_token << endl;
+					cout << "  RefreshToken = " << new_refresh_token << endl;
+					result.new_access_token = new_access_token;
+					result.access_token_refreshed = 1;
+				}
+			}
+
+			if (operation != READ && operation != INSERT && operation != MODIFY && operation != DELETE && operation != EXECUTE) {
+				user.second["token_lifetime"] = to_string(stoi(user.second["token_lifetime"]) - 1);
+				result.result = (char *) OPERATION_NOT_PERMITTED;
+				result.new_access_token = (char *) NO_ACCESS_TOKEN;
+				result.access_token_refreshed = 0;
+				cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				return &result;
+			}
+
+			if (operation == READ) {
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "R") != approvals.at(app_index)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				else {
+					result.result = (char *) OPERATION_NOT_PERMITTED;
+					cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				return &result;
+			}
+			if (operation == INSERT) {
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "I") != approvals.at(app_index)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				else {
+					result.result = (char *) OPERATION_NOT_PERMITTED;
+					cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				return &result;
+			}
+			if (operation == MODIFY) {
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "M") != approvals.at(app_index)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				else {
+					result.result = (char *) OPERATION_NOT_PERMITTED;
+					cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				return &result;
+			}
+			if (operation == DELETE) {
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "D") != approvals.at(app_index)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				else {
+					result.result = (char *) OPERATION_NOT_PERMITTED;
+					cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				return &result;
+			}
+			if (operation == EXECUTE) {
+				int token_expiration = stoi(user.second["token_lifetime"]);
+				token_expiration--;
+				user.second["token_lifetime"] = to_string(token_expiration);
+				if (find(approvals.at(app_index)[resource].begin(), approvals.at(app_index)[resource].end(), "X") != approvals.at(app_index)[resource].end()) {
+					result.result = (char *) PERMISSION_GRANTED;
+					cout << "PERMIT (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				else {
+					result.result = (char *) OPERATION_NOT_PERMITTED;
+					cout << "DENY (" << operation << "," << resource << "," << user.second["access_token"] << "," << user.second["token_lifetime"] << ")" << endl;
+				}
+				return &result;
+			}
+		}
+	}
+
+	result.result = (char *) PERMISSION_DENIED;
+	result.new_access_token = (char *) NO_ACCESS_TOKEN;
+	result.access_token_refreshed = 0;
 	return &result;
 }
 
@@ -127,6 +210,13 @@ struct approve_request_response *
 approve_request_token_1_svc(char **argp, struct svc_req *rqstp)
 {
 	static struct approve_request_response  result;
+	for (auto& user : users) {
+		if (user.second["request_token"] == string(*argp)) {
+			user.second["approval_index"] = to_string(approval_index);
+			user.second["token_lifetime"] = to_string(token_lifetime);
+		}
+	}
+
 	if (!approvals.at(approval_index).empty()) {
 		result.with_sign = 1;
 		cout << "  RequestToken = " << *argp << endl;
@@ -136,6 +226,7 @@ approve_request_token_1_svc(char **argp, struct svc_req *rqstp)
 		approval_index++;
 	}
 	result.request_token = *argp;
+
 
 	return &result;
 }

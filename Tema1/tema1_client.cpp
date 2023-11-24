@@ -34,6 +34,7 @@ tema1_prog_1(char *host)
 
 	for (const auto& request : requests) {
         if (request.second.first == REQUEST) {
+			// cout << "USEEEEEEEEEEER = " << request.first << endl;
 			request_authorization_1_arg = (char *)request.first.c_str();
 			result_1 = request_authorization_1(&request_authorization_1_arg, clnt);
 			if (result_1 == (char **) NULL) {
@@ -44,8 +45,14 @@ tema1_prog_1(char *host)
 				cout << USER_NOT_FOUND << endl;
 				continue;
 			} else {
+				if (users.find(request.first) == users.end()) {
 				users[request.first].push_back(response);
+				} else {
+					users[request.first] = vector<string>();
+					users[request.first].push_back(response);
+				}
 				approve_request_token_1_arg = (char *)response.c_str();
+				// cout << "REQUEST_TOKEN = " << response << endl;
 				result_4 = approve_request_token_1(&approve_request_token_1_arg, clnt);
 				if (result_4 == (struct approve_request_response *) NULL) {
 					clnt_perror (clnt, "call failed");
@@ -73,13 +80,30 @@ tema1_prog_1(char *host)
 			}
 
 		} else {
+			if (users.find(request.first) == users.end() || users[request.first].size() == 1) {
+				validate_delegated_action_1_arg.access_token = (char *)NO_ACCESS_TOKEN;
+			} else {
+				string acc_token = users[request.first].at(1);
+				char * accToken = (char *)acc_token.c_str();
+				validate_delegated_action_1_arg.access_token = accToken;
+			}
 			validate_delegated_action_1_arg.operation = (char *)request.second.first.c_str();
 			validate_delegated_action_1_arg.resource = (char *)request.second.second.c_str();
-			validate_delegated_action_1_arg.access_token = (char *)users[request.first].at(0).c_str();;
 			result_3 = validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
 			if (result_3 == (struct validate_action_response *) NULL) {
 				clnt_perror (clnt, "call failed");
 			}
+			if (result_3->access_token_refreshed == 1) {
+				users[request.first].at(1) = string(result_3->new_access_token);
+			}
+			cout << result_3->result << endl;
+			// for (const auto& entry : users) {
+			// 		cout << "Client ID: " << entry.first << ", Tokens: ";
+			// 		for (const auto& token : entry.second) {
+			// 			cout << token << " ";
+			// 		}
+			// 		cout << endl;
+			// }
 			
 		}
     }
