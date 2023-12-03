@@ -61,3 +61,4 @@ To run:
     make && ./check.sh all
 CLean rule does not delete everything, only the executables and the object files.
 Added newline to the end of all ref output files.
+There's no need to run rpcgen.
