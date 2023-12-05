@@ -6,6 +6,11 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DB_URL')
 db = SQLAlchemy(app)
 
+'''
+Tabela de tari
+Cheia primara este numele tarii
+Id-ul este unic si este incrementat folosind o secventa
+'''
 class Country(db.Model):
     __tablename__ = 'country'
 
@@ -17,7 +22,13 @@ class Country(db.Model):
 
     def json(self):
         return {'id': self.id, 'nume': self.nume, 'lat': self.latitudine, 'lon': self.longitudine}
-    
+
+'''
+Tabela de orase
+Cheia primara este una compusa din id-ul tarii si numele orasului
+Contine si o referinta catre tabela de tari prin foreign key catre id-ul tarii
+Id-ul este unic si este incrementat folosind o secventa
+'''
 class City(db.Model):
     __tablename__ = 'city'
 
@@ -31,7 +42,13 @@ class City(db.Model):
 
     def json(self):
         return {'id': self.id, 'idTara': self.id_tara, 'nume': self.nume, 'lat': self.latitudine, 'lon': self.longitudine}
-    
+
+'''
+Tabela de temperaturi
+Cheia primara este una compusa din id-ul orasului si timestamp
+Contine si o referinta catre tabela de orase prin foreign key catre id-ul orasului
+Id-ul este unic si este incrementat folosind o secventa
+'''
 class Temperatures(db.Model):
     __tablename__ = 'temperatures'
 
@@ -46,78 +63,91 @@ class Temperatures(db.Model):
 
 db.create_all()
 
-#create a test route
+# ruta de test pentru sanity check
 @app.route('/api/test', methods=['GET'])
 def test():
-  return make_response(jsonify({'message': 'test route check'}), 200)
+  return make_response(jsonify({'message': 'test route sanity check'}), 200)
 
-# create a country
+# endpoint pentru crearea de tari
 @app.route('/api/countries', methods=['POST'])
 def create_country():
     try:
-        data = request.get_json()
-        new_country = Country(nume=data['nume'], latitudine=data['lat'], longitudine=data['lon'])
-        if new_country:
-            db.session.add(new_country)
-            db.session.commit()
-            return make_response(jsonify({ 'id': new_country.id}), 201)
+        data = request.get_json()        
+        if len(data) >= 3:
+            new_country = Country(nume=data['nume'], latitudine=data['lat'], longitudine=data['lon'])
+            # daca nu se arunca exceptii si datele sunt valide, se adauga in baza de date
+            if new_country:
+                db.session.add(new_country)
+                db.session.commit()
+                return make_response(jsonify({ 'id': new_country.id}), 201)
+        # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Bad request'}), 400)
     except:
-        return make_response(jsonify({'message': 'Conflict'}), 409)
+        # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
+        return make_response(jsonify({'message': len(data)}), 409)
 
-# get all countries
+# endpoint pentru interogarea tuturor tarilor
 @app.route('/api/countries', methods=['GET'])
 def get_countries():
     countries = Country.query.all()
+    # daca exista tari in baza de date, se intoarce un array de tari, daca nu se intoarce un array gol
+    # care sa semnifice ca la momentul interogarii nu exista tari in baza de date
     if countries:
         return make_response(jsonify([country.json() for country in countries]), 200)
-    return make_response(jsonify({'message': 'Not found'}), 404)
 
-# update a country success 200 bad request 400 not found 404
+# endpoint pentru actualizarea unei tari (necesita primirea tuturor parametrilor din structura unei)
 @app.route('/api/countries/<int:_id>', methods=['PUT'])
 def update_country(_id):
     try:
         country = Country.query.filter_by(id=_id).first()
-        if country:
+        # daca tara exista in baza de date, se actualizeaza datele acesteia
+        if country is not None:
             data = request.get_json()
             country.nume = data['nume']
             country.latitudine = data['lat']
             country.longitudine = data['lon']
             db.session.commit()
             return make_response(jsonify({'message': 'Country updated'}), 200)
+        # daca tara nu exista in baza de date, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Not found'}), 404)
     except:
+        # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Bad request'}), 400)
     
-# delete a country success 200 bad request 400 not found 404
+# endpoint pentru stergerea unei tari
 @app.route('/api/countries/<int:id>', methods=['DELETE'])
 def delete_country(id):
     try:
         country = Country.query.filter_by(id=id).first()
+        # daca tara exista in baza de date, se sterge
         if country:
             db.session.delete(country)
             db.session.commit()
             return make_response(jsonify({'message': 'Country deleted'}), 200)
+        # daca tara nu exista in baza de date, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Not found'}), 404)
     except:
+        # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Bad request'}), 400)
     
-# create a city success 201 and city_id bad request 400 conflict 409
-# body {country_id, name, latitudine, longitudine}
+# endpoint pentru crearea de orase
 @app.route('/api/cities', methods=['POST'])
 def create_city():
     try:
         data = request.get_json()
         new_city = City(id_tara=data['idTara'], nume=data['nume'], latitudine=data['lat'], longitudine=data['lon'])
-        if new_city:
+        # daca nu se arunca exceptii si datele sunt valide, se adauga in baza de date
+        if new_city and len(data) >= 4:
             db.session.add(new_city)
             db.session.commit()
             return make_response(jsonify({'id': new_city.id}), 201)
+        # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Bad request'}), 400)
     except:
+        # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Conflict'}), 409)
     
-# get all cities success 200 not found 404
+
 @app.route('/api/cities', methods=['GET'])
 def get_cities():
     cities = City.query.all()
