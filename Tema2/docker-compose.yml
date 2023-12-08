@@ -3,8 +3,8 @@ version: "3.9"
 services:
   flask_app:
     container_name: flask_app
-    image: sprc/flask_live_app:1.0.0
     build: .
+    image: sprc/flask_live_app:1.0.0
     ports:
       - "6000:6000"
     environment:
@@ -28,8 +28,13 @@ services:
     restart: always
     ports:
       - '8978:8978'
+    environment:
+      - CB_ADMIN_NAME=cbadmin
+      - CB_ADMIN_PASSWORD=cbadmin
     volumes: 
-      - cloudbeaver:/opt/cloudbeaver/workspace 
+      - cloudbeaver:/opt/cloudbeaver/workspace
+    depends_on:
+      - flask_db
 
 volumes:
   pgdata: {}

@@ -74,7 +74,12 @@ def create_country():
     try:
         required_keys = ['nume', 'lat', 'lon']
         data = request.get_json()        
-        if len(data) >= 3 and all(key in data for key in required_keys):
+        if (len(data) >= 3 and 
+            all(key in data for key in required_keys) and 
+            (isinstance(data['lat'], (int, float))) and 
+            isinstance(data['lon'], (int, float)) and 
+            isinstance(data['nume'], str)
+            ):
             new_country = Country(nume=data['nume'], latitudine=data['lat'], longitudine=data['lon'])
             # daca nu se arunca exceptii si datele sunt valide, se adauga in baza de date
             if new_country:
@@ -101,11 +106,23 @@ def get_countries():
 def update_country(_id):
     try:
         required_keys = ['id', 'nume', 'lat', 'lon']
-        country = Country.query.filter_by(id=_id).first()
+        data = request.get_json()
+        if _id is None or not isinstance(_id, int) or _id < 0:
+            # daca request-ul nu foloseste un parametru valid, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Bad request'}), 400)
+        if 'id' in data and _id != data['id']:
+            # daca id-ul din path nu coincide cu cel din body, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Conflict - path id differs from body id'}), 409)
         # daca tara exista in baza de date, se actualizeaza datele acesteia
-        if country is not None:
-            data = request.get_json()
-            if len(data) >= 4 and all(key in data for key in required_keys):
+        if (len(data) >= 4 and 
+            all(key in data for key in required_keys) and
+            isinstance(data['lat'], (int, float)) and
+            isinstance(data['lon'], (int, float)) and
+            isinstance(data['nume'], str) and
+            isinstance(data['id'], int)
+            ):
+            country = Country.query.filter_by(id=_id, nume=data['nume']).first()
+            if country is not None:
                 # " It is commonly agreed that primary keys should be immutable 
                 # (or as stable as possible since immutability can not be enforced in the DB). "
                 # country.id = data['id'] // foreign key for cities
@@ -114,10 +131,10 @@ def update_country(_id):
                 country.longitudine = data['lon']
                 db.session.commit()
                 return make_response(jsonify({'message': 'Country updated'}), 200)
-            # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
-            return make_response(jsonify({'message': 'Bad Request'}), 400)
-        # daca tara nu exista in baza de date, se intoarce un mesaj corespunzator
-        return make_response(jsonify({'message': 'Not found'}), 404)
+            # daca tara nu exista in baza de date, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Not found'}), 404)
+        # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
+        return make_response(jsonify({'message': 'Bad Request'}), 400)
     except:
         # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Conflict'}), 409)
@@ -147,7 +164,13 @@ def create_city():
     try:
         required_keys = ['idTara', 'nume', 'lat', 'lon']
         data = request.get_json()
-        if len(data) >= 4 and all(key in data for key in required_keys):
+        if (len(data) >= 4 and 
+            all(key in data for key in required_keys) and
+            isinstance(data['lat'], (int, float)) and
+            isinstance(data['lon'], (int, float)) and
+            isinstance(data['nume'], str) and
+            isinstance(data['idTara'], int)
+            ):
             if Country.query.filter_by(id=data['idTara']).first() is None:
                 # daca tara nu exista in baza de date, se intoarce un mesaj corespunzator
                 return make_response(jsonify({'message': 'Not found'}), 404)
@@ -184,11 +207,24 @@ def get_cities_by_country(country_id):
 def update_city(id):
     try:
         required_keys = ['id', 'idTara', 'nume', 'lat', 'lon']
-        city = City.query.filter_by(id=id).first()
+        data = request.get_json()
+        if id is None or not isinstance(id, int) or id < 0:
+            # daca request-ul nu foloseste un parametru valid, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Bad request'}), 400)
+        if 'id' in data and id != data['id']:
+            # daca id-ul din path nu coincide cu cel din body, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Conflict - path id differs from body id'}), 409)
         # daca orasul exista in baza de date, se actualizeaza datele acestuia
-        if city:
-            data = request.get_json()
-            if len(data) >= 5 and all(key in data for key in required_keys):
+        if (len(data) >= 5 and 
+            all(key in data for key in required_keys) and
+            isinstance(data['lat'], (int, float)) and
+            isinstance(data['lon'], (int, float)) and
+            isinstance(data['nume'], str) and
+            isinstance(data['idTara'], int) and
+            isinstance(data['id'], int)
+            ):
+            city = City.query.filter_by(id=id, id_tara=data['idTara'], nume=data['nume']).first()
+            if city:
                 # " It is commonly agreed that primary keys should be immutable 
                 # (or as stable as possible since immutability can not be enforced in the DB). "
                 # city.id = data['id'] // foreign key for temperatures
@@ -198,10 +234,10 @@ def update_city(id):
                 city.longitudine = data['lon']
                 db.session.commit()
                 return make_response(jsonify({'message': 'City updated'}), 200)
-            # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
-            return make_response(jsonify({'message': 'Bad Request'}), 400)
-        # daca orasul nu exista in baza de date, se intoarce un mesaj corespunzator
-        return make_response(jsonify({'message': 'Not found'}), 404)
+            # daca orasul nu exista in baza de date, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Not found'}), 404)
+        # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
+        return make_response(jsonify({'message': 'Bad Request'}), 400)
     except:
         # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Conflict'}), 409)
@@ -231,7 +267,11 @@ def add_temperature():
     try:
         requited_keys = ['valoare', 'idOras']
         data = request.get_json()
-        if len(data) >= 2 and all(key in data for key in requited_keys):
+        if (len(data) >= 2 and 
+            all(key in data for key in requited_keys) and
+            isinstance(data['valoare'], (int, float)) and
+            isinstance(data['idOras'], int)
+            ):
             if City.query.filter_by(id=data['idOras']).first() is None:
                 # daca orasul nu exista in baza de date, se intoarce un mesaj corespunzator
                 return make_response(jsonify({'message': 'Not found'}), 404)
@@ -352,19 +392,30 @@ def update_temperature(id):
     try:
         # verific daca parametrii sunt valizi
         required_keys = ['id', 'valoare', 'idOras']
-        temperature = Temperatures.query.filter_by(id=id).first()
+        data = request.get_json()
+        if id is None or not isinstance(id, int) or id < 0:
+            # daca request-ul nu foloseste un parametru valid, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Bad request'}), 400)
+        if 'id' in data and id != data['id']:
+            # daca id-ul din path nu coincide cu cel din body, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Conflict - path id differs from body id'}), 409)   
         # daca temperatura exista in baza de date, se actualizeaza datele acesteia
-        if temperature:
-            data = request.get_json()
-            if len(data) >= 3 and all(key in data for key in required_keys):
+        if (len(data) >= 3 and 
+            all(key in data for key in required_keys) and
+            isinstance(data['valoare'], (int, float)) and
+            isinstance(data['idOras'], int) and
+            isinstance(data['id'], int)
+            ):
+            temperature = Temperatures.query.filter_by(id=id, id_oras=data['idOras']).first()
+            if temperature:
                 temperature.valoare = data['valoare']
-                temperature.id_oras = data['idOras']
+                # temperature.id_oras = data['idOras'] primary key
                 db.session.commit()
                 return make_response(jsonify({'message': 'Temperature updated'}), 200)
-            # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
-            return make_response(jsonify({'message': 'Bad request'}), 400)
-        # daca temperatura nu exista in baza de date, se intoarce un mesaj corespunzator
-        return make_response(jsonify({'message': 'Not found'}), 404)
+            # daca temperatura nu exista in baza de date, se intoarce un mesaj corespunzator
+            return make_response(jsonify({'message': 'Not found'}), 404)
+        # daca request-ul nu foloseste un body valid, se intoarce un mesaj corespunzator
+        return make_response(jsonify({'message': 'Bad request'}), 400)
     except:
         # daca se arunca exceptii in timpul executiei, se intoarce un mesaj corespunzator
         return make_response(jsonify({'message': 'Conflict'}), 409)

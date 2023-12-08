@@ -5,6 +5,7 @@ ___Scurta prezentare generala a implementarii___
 Structura si implementarea logicii de containerizare a fost inspirata de aici:
 https://www.youtube.com/watch?v=fHQWTsWqBdE&t=1535s -> 
 -> https://github.com/FrancescoXX/flask-crud-live/tree/main
+https://github.com/dbeaver/cloudbeaver
 ___Tehnologii folosite___
 PostgresSql - pentru stocarea informatiilor intr-un sistem de baze de date.
 Python Flask si Requests - pentru implementarea api-urilor
@@ -23,6 +24,7 @@ ar fi toString din Java)
 ___Request-uri POST___
 Acestea le am generalizat in felul urmator:
 - Daca nr. field-urilor din request sau numele acestora nu se potriveste cu ce se asteapta -> 400
+- Daca tipul filed-urilor din body nu se potriveste cu ce se asteapta -> 400
 - Daca totul decurge ok, request-ul este procesat si executat -> 200
 - Daca se intalneste o exceptie in timpul executiei -> 409
 - In cazul entitatilor care au foreign key (ex. orase sau temperaturi) se verifica daca entitatea
@@ -36,9 +38,13 @@ Acestea le am generalizat in felul urmator:
 ___Request-uri PUT___
 Acestea le am generalizat in felul urmator:
 - Daca nr. field-urilor din request sau numele acestora nu se potriveste cu ce se asteapta -> 400
+- Daca tipul filed-urilor din body nu se potriveste cu ce se asteapta -> 400
 - Daca totul decurge ok, request-ul este procesat si executat -> 200
 - Daca entitatea care se actualizeaza nu exista -> 404
 - Daca se intalneste o exceptie in timpul executiei -> 409
+- Am considerat ca un request sa fie executat cu succes, trebuie ca toate cheile unice din
+  body sa existe in cadrul unei entitati si sa se actualizeze doar informatiile din body
+  care nu sunt chei unice. Nu vad sensul in a schimba cheile unice si nici nu este good practice.
 
 ___Request-uri DELETE___
 Acestea le am generalizat in felul urmator:
@@ -50,6 +56,10 @@ Acestea le am generalizat in felul urmator:
 ___Rulare aplicatie___
 - Dependente: docker, docker-compose, make & python3
 
+run: $ sudo docker-compose up
+stop: CTRL + C & sudo docker-compose down
+
+step by step run:
 1) Creare serviciu baza de date:
     $ make db
 2) Creare serviciu utilitar baza de date:
@@ -61,12 +71,11 @@ ___Rulare aplicatie___
 5) Oprire aplicatie si inchidere container
     CTRL + C -> $ make stop
 
-___Configurare DBeaver___
-- Select Connect by Host
-- Enter Host: localhost
-        Database: postgres
-        Port: 5432
-- Authentication: Database Native
-    Username: postgres
-    Password: postgres
-- In arhiva este inclus si un screenshot cu configurarea pentru simplitate (dbeaver.jpg)
+___Configurare CloudBeaver___
+- Se urmeaza pasii de inregistrare (pas11.jpg)
+- Dupa aceea ne logam folosind datele adaugate la register
+- Vrem acum sa ne conectam la baza de date: apasam plus din stanga sus si 'Find Local Database',
+  adaugam localhost in searchbar si Enter (pas12.png)
+- Adaugam numele containerului 'flask_db la campul de host si 'postgres' 
+  la user si parola si dam create (pas2.png)
+- Acum putem naviga si interoga baza de date (result.png)
