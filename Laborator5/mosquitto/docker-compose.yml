@@ -1,0 +1,14 @@
+
+version: "3.7"
+services:
+  mqtt5:
+    image: eclipse-mosquitto
+    container_name: mqtt3
+    ports:
+      - "1883:1883" #default mqtt port
+    volumes:
+      - ./config:/mosquitto/config:rw
+
+volumes:
+  config:
+
