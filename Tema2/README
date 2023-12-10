@@ -74,8 +74,8 @@ step by step run:
 ___Configurare CloudBeaver___
 - Se urmeaza pasii de inregistrare (pas11.jpg)
 - Dupa aceea ne logam folosind datele adaugate la register
-- Vrem acum sa ne conectam la baza de date: apasam plus din stanga sus si 'Find Local Database',
-  adaugam localhost in searchbar si Enter (pas12.png)
+- Vrem acum sa ne conectam la baza de date: apasam pe logo in stanga sus, apoi 
+    plus din stanga sus si 'Find Local Database', adaugam localhost in searchbar si Enter (pas12.png)
 - Adaugam numele containerului 'flask_db la campul de host si 'postgres' 
   la user si parola si dam create (pas2.png)
 - Acum putem naviga si interoga baza de date (result.png)
